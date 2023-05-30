@@ -1,0 +1,7 @@
+<JavaCallout name='Java-Transform-JWKS'>
+  <Properties>
+    <Property name="source">message.content</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.TransformJwks</ClassName>
+  <ResourceURL>java://apigee-callout-transform-jwks-20230526.jar</ResourceURL>
+</JavaCallout>

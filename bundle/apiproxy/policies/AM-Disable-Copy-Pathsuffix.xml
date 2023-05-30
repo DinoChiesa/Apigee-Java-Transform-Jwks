@@ -1,0 +1,14 @@
+<AssignMessage name='AM-Disable-Copy-Pathsuffix'>
+
+  <!--
+      By default, Apigee appends the path suffix provided to the Apigee proxy,
+      to the request initiated to the upstream system.  Use this variable to
+      turn that behavior OFF, so that the URL the target sees is exactly the URL
+      as configured in the TargetEndppoint.
+  -->
+  <AssignVariable>
+    <Name>target.copy.pathsuffix</Name>
+    <Value>false</Value>
+  </AssignVariable>
+
+</AssignMessage>
