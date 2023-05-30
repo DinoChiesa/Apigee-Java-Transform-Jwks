@@ -5,28 +5,27 @@ compile a Java callout for Apigee. The callout performs one simple job: for a
 given JWKS payload, for each JWK with `kty` = "RSA", that includes `x5c` but no
 `n` or `e` parameters, it transforms that JWK into one that includes `n` & `e`.
 
-## Building:
+## Why
 
-1. unpack (if you can read this, you've already done that).
+The VerifyJWT policy in Apigee can select an RSA key from a JWKS if the JWK has
+an `n` and a `e` property.  If the JWK has only a `x5c` property, the policy
+cannot select it.  This Callout transforms the JWKS with only `x5c` properties
+into something that VerifyJWT can use.
 
-2. configure the build on your machine by loading the Apigee jars into your local cache
-  ```
-  ./buildsetup.sh
-  ```
 
-2. Build with maven.
-  ```
-  mvn clean package
-  ```
+## Using this Callout
 
-3. if you edit proxy bundles offline, copy the resulting jar file, available in
+You do not need to build this project in order to use the callout. To use it,
+follow these instructions.
+
+1. If you edit proxy bundles offline, copy the jar file, available in
    `target/apigee-callout-remove-variable-20230526.jar`, as well as the
-   dependencie that also appear in the `target/lib` directory, to your
+   dependencies that appear in the `target/lib` directory, to your
    `apiproxy/resources/java` directory.  If you don't edit proxy bundles
    offline, upload the jar file into the API Proxy via the Apigee API Proxy
    Editor .
 
-4. include an XML file for the Java callout policy in your
+2. include an XML file for the Java callout policy in your
    apiproxy/resources/policies directory. It should look
    like this:
    ```xml
@@ -39,19 +38,22 @@ given JWKS payload, for each JWK with `kty` = "RSA", that includes `x5c` but no
    </JavaCallout>
    ```
 
-   * The `source` value should resolve to a message, or to a string.
+   * The `source` value should resolve to a message, or to a string. If you omit it,
+     it defaults to `message.content`.
 
-5. use the Google Cloud Console UI, or a tool like
+3. Attach this policy to the flow. Usually you will want to attach it to the Response flow.
+
+4. use the Google Cloud Console UI, or a tool like
    [importAndDeploy.js](https://github.com/DinoChiesa/apigee-edge-js-examples/blob/master/importAndDeploy.js)
-   or similar to import the proxy into an Edge organization, and then deploy the
-   proxy .  Eg,
-   
+   or similar to import the proxy into an Apigee organization, and then deploy the
+   proxy.  Eg,
+
    ```
    TOKEN=`gcloud auth print-access-token`
    node ./importAndDeploy -v --token $TOKEN --apigeex -o $ORG -e $ENV  -d bundle
    ```
 
-6. Start a trace in Apigee, then use a client to generate and send http requests
+5. Start a trace in Apigee, then use a client to generate and send http requests
    to the proxy. Eg,
 
    ```
@@ -63,18 +65,30 @@ given JWKS payload, for each JWK with `kty` = "RSA", that includes `x5c` but no
    gets transformed by the callout.
 
 
-## Dependencies
+## Building
 
-- Apigee Edge expressions v1.0
-- Apigee Edge message-flow v1.0
+You do not need to build this project in order to use the callout. If you wish to build it, follow these instructions.
 
+1. unpack (if you can read this, you've already done that).
 
-If you want to download them manually:
+2. configure the build on your machine by loading the Apigee jars into your local cache
+   ```
+   ./buildsetup.sh
+   ```
 
-* The 2 jars are available in Apigee Edge. The first two are
-  produced by Apigee; contact Apigee support to obtain these jars to allow
-  the compile, or get them here:
-  https://github.com/apigee/api-platform-samples/tree/master/doc-samples/java-cookbook/lib
+   This will satisfy the 2 build-time dependencies,
+     - Apigee Edge expressions v1.0
+     - Apigee Edge message-flow v1.0
+
+   If you want to download them manually, you get them here:
+   https://github.com/apigee/api-platform-samples/tree/master/doc-samples/java-cookbook/lib
+
+2. Build with maven.
+   ```
+   mvn clean package
+   ```
+
+   The result will be a jar you can use in your Apigee proxies.
 
 
 ## Bugs
