@@ -7,7 +7,7 @@
 // This might be necessary if the JWKS provider omits the n and e parameters.
 //
 // ------------------------------------------------------------------
-// Copyright © 2023 Google LLC.
+// Copyright © 2023-2024 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
 import com.google.apigee.json.JavaxJson;
 import java.io.ByteArrayInputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -40,87 +38,12 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class TransformJwks implements Execution {
-  private static final Pattern variableReferencePattern =
-      Pattern.compile("(.*?)\\{([^\\{\\} :][^\\{\\} ]*?)\\}(.*?)");
-  private static final Pattern commonErrorPattern = Pattern.compile("^(.+?)[:;] (.+)$");
-  private Map<String, String> properties; // read-only
-
+public class TransformJwks extends CalloutBase implements Execution {
   public TransformJwks(Map properties) {
-    this.properties = genericizeMap(properties);
-  }
-
-  public static Map<String, String> genericizeMap(Map properties) {
-    // convert an untyped Map to a generic map
-    Map<String, String> m = new HashMap<String, String>();
-    Iterator iterator = properties.keySet().iterator();
-    while (iterator.hasNext()) {
-      Object key = iterator.next();
-      Object value = properties.get(key);
-      if ((key instanceof String) && (value instanceof String)) {
-        m.put((String) key, (String) value);
-      }
-    }
-    return Collections.unmodifiableMap(m);
-  }
-
-  protected String varName(String s) {
-    return "jwks_" + s;
-  }
-
-  protected String getSource(MessageContext msgCtxt) throws IllegalStateException {
-    // Retrieve a value from a named property, as a string.
-    String value = (String) this.properties.get("source");
-    if (value != null) value = value.trim();
-    if (value == null || value.equals("")) {
-      return null;
-    }
-    value = resolveVariableReferences(value, msgCtxt);
-    if (value == null || value.equals("")) {
-      return null;
-    }
-    return value;
-  }
-
-  protected boolean getDebug() {
-    String wantDebug = (String) this.properties.get("debug");
-    boolean debug = (wantDebug != null) && Boolean.parseBoolean(wantDebug);
-    return debug;
-  }
-
-  /*
-   *
-   * If a property holds one or more segments wrapped with begin and end
-   * curlies, eg, {apiproxy.name}, then "resolve" the value by de-referencing
-   * the context variable whose name appears between the curlies.
-   **/
-  protected String resolveVariableReferences(String spec, MessageContext msgCtxt) {
-    if (spec == null || spec.equals("")) return spec;
-    Matcher matcher = variableReferencePattern.matcher(spec);
-    StringBuffer sb = new StringBuffer();
-    while (matcher.find()) {
-      matcher.appendReplacement(sb, "");
-      sb.append(matcher.group(1));
-      String ref = matcher.group(2);
-      String[] parts = ref.split(":", 2);
-      Object v = msgCtxt.getVariable(parts[0]);
-      if (v != null) {
-        sb.append((String) v);
-      } else if (parts.length > 1) {
-        sb.append(parts[1]);
-      }
-      sb.append(matcher.group(3));
-    }
-    matcher.appendTail(sb);
-    return sb.toString();
+    super(properties);
   }
 
   public static X509Certificate x5cToCert(String x5c) throws Exception {
@@ -135,9 +58,19 @@ public class TransformJwks implements Execution {
     }
   }
 
+  private static byte[] maybeTrimLeadingZero(byte[] array) {
+    if (array[0] == 0) {
+      byte[] tmp = new byte[array.length - 1];
+      System.arraycopy(array, 1, tmp, 0, tmp.length);
+      array = tmp;
+    }
+    return array;
+  }
+
   protected static String encode(BigInteger value) {
     byte[] bytes = value.toByteArray();
-    return Base64.getEncoder().encodeToString(bytes);
+    bytes = maybeTrimLeadingZero(bytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
   protected static String transform(String jwksContent) throws Exception {
@@ -161,24 +94,6 @@ public class TransformJwks implements Execution {
     return JavaxJson.toJson(jwksjson);
   }
 
-  protected static String getStackTraceAsString(Throwable t) {
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
-    t.printStackTrace(pw);
-    return sw.toString();
-  }
-
-  protected void setExceptionVariables(Exception exc1, MessageContext msgCtxt) {
-    String error = exc1.toString().replaceAll("\n", " ");
-    msgCtxt.setVariable(varName("exception"), error);
-    Matcher matcher = commonErrorPattern.matcher(error);
-    if (matcher.matches()) {
-      msgCtxt.setVariable(varName("error"), matcher.group(2));
-    } else {
-      msgCtxt.setVariable(varName("error"), error);
-    }
-  }
-
   public ExecutionResult execute(final MessageContext msgCtxt, final ExecutionContext execContext) {
     try {
       String sourceVariable = getSource(msgCtxt);
@@ -187,9 +102,14 @@ public class TransformJwks implements Execution {
       }
 
       Object source = msgCtxt.getVariable(sourceVariable);
+      if (source == null) {
+        throw new IllegalStateException("source variable resolves to null");
+      }
       String jwksContent =
           (source instanceof Message) ? ((Message) source).getContent() : (String) source;
-
+      if (jwksContent == null || jwksContent.trim().equals("")) {
+        throw new IllegalStateException("empty jwks content");
+      }
       String transformedJwks = transform(jwksContent);
       if (source instanceof Message) {
         ((Message) source).setContent(transformedJwks);

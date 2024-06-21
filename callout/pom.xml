@@ -5,61 +5,46 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.google.apigee.callouts</groupId>
   <artifactId>apigee-callout-transform-jwks</artifactId>
-  <version>20230526</version>
+  <version>20240621</version>
   <name>ApigeeCalloutTransformJwks</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <jdk.target.version>1.8</jdk.target.version>
-    <bouncycastle.version>1.67</bouncycastle.version>
+    <jdk.target.version>11</jdk.target.version>
+    <apigee.expressions.version>1.0.0</apigee.expressions.version>
+    <apigee.message.flow.version>1.0.0</apigee.message.flow.version>
+    <bouncycastle.version>1.70</bouncycastle.version>
+    <testng.version>6.8.7</testng.version>
+    <jmockit.version>1.49</jmockit.version>
     <javaxjson.version>1.1.4</javaxjson.version>
     <apiproxy.java.rsrc.dir>../bundle/apiproxy/resources/java</apiproxy.java.rsrc.dir>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+      <url>https://us-maven.pkg.dev/apigee-release/apigee-java-callout-dependencies</url>
+    </repository>
+  </repositories>
 
   <dependencies>
 
-<!--
-
-The following 2 jar dependencies from Apigee are not avaiable in any
-public repo. You can install them in your machine-local repo (The .m2
-cache) to get this pom.xml to build successfully.
-
-Run the  buildsetup.sh script to do this, or
-
-do it manually by running these commands:
-
-  mvn install:install-file \
-   -Dfile=/Path/To/expressions-1.0.0.jar \
-   -DgroupId=com.apigee.edge \
-   -DartifactId=expressions \
-   -Dversion=1.0.0 \
-   -Dpackaging=jar \
-   -DgeneratePom=true
-
-  mvn install:install-file \
-   -Dfile=/Path/To/message-flow-1.0.0.jar \
-   -DgroupId=com.apigee.edge \
-   -DartifactId=message-flow \
-   -Dversion=1.0.0 \
-   -Dpackaging=jar \
-   -DgeneratePom=true
--->
-
     <dependency>
-      <groupId>com.apigee.edge</groupId>
+      <groupId>com.apigee.gateway.libraries</groupId>
       <artifactId>message-flow</artifactId>
-      <version>1.0.0</version>
+      <version>${apigee.message.flow.version}</version>
       <scope>provided</scope>
+      <type>jar</type>
     </dependency>
 
     <dependency>
-      <groupId>com.apigee.edge</groupId>
+      <groupId>com.apigee.infra.libraries</groupId>
       <artifactId>expressions</artifactId>
-      <version>1.0.0</version>
+      <version>${apigee.expressions.version}</version>
       <scope>provided</scope>
+      <type>jar</type>
     </dependency>
 
     <dependency>
@@ -87,6 +72,21 @@ do it manually by running these commands:
       <artifactId>javax.json</artifactId>
       <version>${javaxjson.version}</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>${testng.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jmockit</groupId>
+      <artifactId>jmockit</artifactId>
+      <version>${jmockit.version}</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -105,6 +105,7 @@ do it manually by running these commands:
             <configuration>
               <outputDirectory>${project.build.directory}/lib</outputDirectory>
               <includeScope>runtime</includeScope>
+              <excludeScope>provided</excludeScope>
               <overWriteReleases>false</overWriteReleases>
               <overWriteSnapshots>false</overWriteSnapshots>
               <overWriteIfNewer>true</overWriteIfNewer>
@@ -116,11 +117,10 @@ do it manually by running these commands:
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>3.13.0</version>
         <configuration>
           <showDeprecation>true</showDeprecation>
-          <source>${jdk.target.version}</source>
-          <target>${jdk.target.version}</target>
+          <release>${jdk.target.version}</release>
           <compilerArgs>
             <!-- <arg>-verbose</arg> -->
             <arg>-Xlint:unchecked,deprecation</arg>
@@ -131,19 +131,28 @@ do it manually by running these commands:
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.4.1</version>
         <configuration>
           <archive>
             <!-- do not include the pom.xml file in the generated jar -->
             <addMavenDescriptor>false</addMavenDescriptor>
           </archive>
         </configuration>
+      </plugin>
 
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <argLine>
+            -javaagent:"${settings.localRepository}"/org/jmockit/jmockit/${jmockit.version}/jmockit-${jmockit.version}.jar
+          </argLine>
+        </configuration>
       </plugin>
 
       <plugin>
         <artifactId>maven-antrun-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <id>ant1</id>
@@ -175,8 +184,6 @@ do it manually by running these commands:
                     <!-- copy any required dependencies tht are not
                          already included in the Edge runtime: -->
                     <include name="lib/*.jar"/>
-                    <exclude name="lib/message-flow-1.0.0.jar"/>
-                    <exclude name="lib/expressions-1.0.0.jar"/>
                   </fileset>
                   <mapper type="flatten"/>
                 </copy>
@@ -189,7 +196,7 @@ do it manually by running these commands:
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.5.0</version>
         <executions>
           <execution>
             <id>enforce-maven</id>
@@ -199,7 +206,7 @@ do it manually by running these commands:
             <configuration>
               <rules>
                 <requireMavenVersion>
-                  <version>3.5.0</version>
+                  <version>3.9.0</version>
                 </requireMavenVersion>
               </rules>
             </configuration>
@@ -210,7 +217,7 @@ do it manually by running these commands:
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.15.0</version>
+        <version>2.16.2</version>
         <executions>
           <execution>
             <phase>compile</phase>
@@ -221,7 +228,6 @@ do it manually by running these commands:
           </execution>
         </executions>
       </plugin>
-
 
     </plugins>
   </build>
