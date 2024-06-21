@@ -10,6 +10,8 @@ compile a Java callout for Apigee. There are two callout classes:
 - JwkToPem - Converts a single JWK formatted key with `n` and `e` parameters and
   `kty` = "RSA" into a PEM-formatted public key.
 
+Because this is built with Java11, it won't work on Apigee OPDK at this time. 
+
 ## Why
 
 Some systems need keys in different formats.  For example, the VerifyJWT policy in Apigee can select an RSA key from a JWKS if the JWK has
@@ -108,7 +110,7 @@ Convert a single JWK from a format that contains `n` and `e`, into a public key 
 </JavaCallout>
 ```
 
-The output is placed into a variable named `jwks_pem`.  It will look like this: 
+The output is placed into a variable named `jwks_pem`.  It will look like this:
 
 ```
 -----BEGIN PUBLIC KEY-----
@@ -150,7 +152,7 @@ You need maven v3.9.0 or later, and JDK 11.
 This material is Copyright 2023-2024, Google LLC.
 and is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file.
 
-This code is open source. 
+This code is open source.
 
 
 ## Support
