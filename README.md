@@ -10,7 +10,7 @@ compile a Java callout for Apigee. There are two callout classes:
 - JwkToPem - Converts a single JWK formatted key with `n` and `e` parameters and
   `kty` = "RSA" into a PEM-formatted public key.
 
-Because this is built with Java11, it won't work on Apigee OPDK at this time. 
+The JAR here is built with Java11, but you can re-build it with Java8 if you want to use it with Apigee OPDK.
 
 ## Why
 
@@ -134,14 +134,34 @@ eqNzo6ntcYH13L8snY6xWz0CAwEAAQ==
 
 You do not need to build this project in order to use the callout. If you wish to build it, follow these instructions.
 
-
-You need maven v3.9.0 or later, and JDK 11.
+You need maven v3.9.0 or later, and either JDK 8 or JDK 11.
 
 1. unpack (if you can read this, you've already done that).
 
-2. Build with maven.
+2. To build with maven with Java11,
+   make sure your JAVA_HOME points to jdk11. Eg,
+   ```
+   export JAVA_HOME=/usr/local/opt/openjdk@11
+   export PATH="$JAVA_HOME/bin:$PATH"
+   ```
+   Then build:
    ```
    mvn clean package
+   ```
+
+   The result will be a jar you can use in your Apigee proxies.
+
+2. OR, to Build with maven with Java 8,
+   make sure your JAVA_HOME points to jdk8. Eg,
+
+   ```
+   export JAVA_HOME=/usr/local/opt/openjdk@8
+   export PATH="$JAVA_HOME/bin:$PATH"
+   ```
+
+   Then build:
+   ```
+   mvn -Djdk.target.version=8 clean package
    ```
 
    The result will be a jar you can use in your Apigee proxies.

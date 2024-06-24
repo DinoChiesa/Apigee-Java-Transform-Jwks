@@ -121,6 +121,12 @@
         <configuration>
           <showDeprecation>true</showDeprecation>
           <release>${jdk.target.version}</release>
+          <!-- the following may be necessary when building with java 1.8 -->
+          <source>${jdk.target.version}</source>
+          <target>${jdk.target.version}</target>
+
+          <!-- testCompile gets its configuration from maven.compiler.release  -->
+
           <compilerArgs>
             <!-- <arg>-verbose</arg> -->
             <arg>-Xlint:unchecked,deprecation</arg>

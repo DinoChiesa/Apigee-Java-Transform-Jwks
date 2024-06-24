@@ -15,31 +15,60 @@
 
 package com.google.apigee.util;
 
-/* Requires Java11 for the java.net.http.HttpClient */
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class HttpFetch {
 
-  // public HttpFetch (String[] args) {}
-  public static String fetch(String uri)
-      throws URISyntaxException, IOException, InterruptedException {
-    System.out.printf("fetch [%s]...\n", uri);
-    HttpRequest request =
-        HttpRequest.newBuilder().header("X-Our-Header-1", "value1").uri(new URI(uri)).GET().build();
-    HttpClient client = HttpClient.newHttpClient();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    HttpHeaders headers = response.headers();
-    System.out.printf("response headers:\n%s\n", headers.toString());
-    String body = response.body();
+  private HttpFetch(String[] args) {}
 
-    System.out.printf("\n\n=>\n%s\n", body);
-    return body;
+  private static byte[] readAll(InputStream is) {
+    try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+      int nRead;
+      byte[] data = new byte[1024];
+      while ((nRead = is.read(data, 0, data.length)) != -1) {
+        os.write(data, 0, nRead);
+      }
+      os.flush();
+      byte[] b = os.toByteArray();
+      return b;
+    } catch (Exception ex1) {
+      return null;
+    }
+  }
+
+  public static String fetch(final String uri)
+      throws IOException, InterruptedException, MalformedURLException {
+    System.out.printf("fetch [%s]...\n", uri);
+
+    URL url = new URL(uri);
+
+    // URL connection channel.
+    HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
+
+    // Specify the header and verb
+    urlConn.setRequestProperty("Accept", "*/*");
+    urlConn.setRequestMethod("GET");
+
+    // Let the run-time system (RTS) know that we want to read the response.
+    urlConn.setDoInput(true);
+
+    // Let the RTS know that we want to send something
+    urlConn.setDoOutput(false);
+
+    // No caching, we want the real thing.
+    urlConn.setUseCaches(false);
+    urlConn.connect();
+
+    // Get response data.
+    byte[] b = readAll(urlConn.getInputStream());
+    String str = new String(b, StandardCharsets.UTF_8);
+
+    return str;
   }
 }
